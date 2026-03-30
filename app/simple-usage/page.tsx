@@ -1,4 +1,116 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { TaskOrEmpty, ViewMode as ViewModeType } from "@odik91/gantt-task-react";
+import { Gantt, ViewMode } from "@odik91/gantt-task-react";
+
+function GanttDemo({
+  tasks,
+  viewMode,
+  title,
+}: {
+  tasks: TaskOrEmpty[];
+  viewMode: ViewModeType;
+  title: string;
+}) {
+  const [nextTasks, setNextTasks] = useState<TaskOrEmpty[]>(tasks);
+
+  return (
+    <div className="rounded-xl border border-black/5 bg-white dark:bg-black">
+      <div className="p-3 text-sm text-zinc-600 dark:text-zinc-300 border-b border-black/5">
+        {title}
+      </div>
+      <div className="overflow-x-auto overflow-y-hidden w-full">
+        <div
+          style={{
+            height: 520,
+            minWidth: 1800,
+            width: "max-content",
+          }}
+        >
+          <Gantt
+            tasks={nextTasks}
+            viewMode={viewMode}
+            onChangeTasks={(t) => setNextTasks([...t])}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SimpleUsagePage() {
+  const viewMode = useMemo(() => ViewMode.Day, []);
+  const tasksBasic = useMemo<TaskOrEmpty[]>(
+    () => [
+      {
+        id: "p1",
+        type: "project",
+        name: "Project Alpha",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 10),
+        progress: 0,
+        isDisabled: true,
+      },
+      {
+        id: "t1",
+        type: "task",
+        parent: "p1",
+        name: "Idea",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 3),
+        progress: 45,
+      },
+      {
+        id: "t2",
+        type: "task",
+        parent: "p1",
+        name: "Implementation",
+        start: new Date(2020, 1, 3),
+        end: new Date(2020, 1, 7),
+        progress: 10,
+      },
+    ],
+    []
+  );
+
+  const tasksWithAvatar = useMemo<TaskOrEmpty[]>(
+    () => [
+      {
+        id: "p2",
+        type: "project",
+        name: "Project Beta",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 10),
+        progress: 0,
+        isDisabled: true,
+      },
+      {
+        id: "t3",
+        type: "task",
+        parent: "p2",
+        name: "Design review",
+        shortName: "Ana",
+        avatarUrl: "https://i.pravatar.cc/48?img=12",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 4),
+        progress: 60,
+      },
+      {
+        id: "t4",
+        type: "task",
+        parent: "p2",
+        name: "Development",
+        shortName: "Budi",
+        avatarUrl: "https://i.pravatar.cc/48?img=32",
+        start: new Date(2020, 1, 4),
+        end: new Date(2020, 1, 8),
+        progress: 20,
+      },
+    ],
+    []
+  );
+
   return (
     <article className="space-y-6">
       <div className="space-y-2">
@@ -13,6 +125,14 @@ export default function SimpleUsagePage() {
           , dan menangani perubahan dengan `onChangeTasks`.
         </p>
       </div>
+
+      <GanttDemo tasks={tasksBasic} viewMode={viewMode} title="Simple Gantt" />
+
+      <GanttDemo
+        tasks={tasksWithAvatar}
+        viewMode={viewMode}
+        title="Gantt dengan Avatar"
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
