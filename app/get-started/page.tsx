@@ -77,7 +77,7 @@ export default function GetStartedPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
-          Contoh Minimal
+          Contoh Minimal (sebelum demo)
         </h2>
         <pre className="overflow-x-auto rounded-xl bg-zinc-900 text-zinc-100 p-4">
           <code>{`"use client";
@@ -87,31 +87,59 @@ import { Gantt, type Task, ViewMode } from "@odik91/gantt-task-react";
 import "@odik91/gantt-task-react/dist/style.css";
 
 export default function SimpleGantt() {
+  const viewDate = useMemo(() => new Date(2020, 1, 1), []);
+
   const tasks = useMemo<Task[]>(
     () => [
+      // Root project (supaya list task punya hierarchy)
+      {
+        id: "p1",
+        type: "project",
+        name: "Project Alpha",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 6),
+        progress: 0,
+        isDisabled: true,
+      },
+      // Child tasks
       {
         id: "t1",
         type: "task",
+        parent: "p1",
         name: "Idea",
         start: new Date(2020, 1, 1),
-        end: new Date(2020, 1, 2),
+        end: new Date(2020, 1, 3),
         progress: 45,
+        shortName: "Ana",
       },
       {
         id: "t2",
         type: "task",
+        parent: "p1",
         name: "Implementation",
-        start: new Date(2020, 1, 2),
+        start: new Date(2020, 1, 3),
         end: new Date(2020, 1, 6),
         progress: 10,
+        shortName: "Budi",
       },
     ],
     []
   );
 
   return (
-    <div style={{ height: 480 }}>
-      <Gantt tasks={tasks} viewMode={ViewMode.Day} />
+    <div
+      style={{
+        height: 520,
+        overflowX: "auto",
+      }}
+    >
+      <div style={{ minWidth: 1800, width: "max-content" }}>
+        <Gantt
+          tasks={tasks}
+          viewMode={ViewMode.Day}
+          viewDate={viewDate}
+        />
+      </div>
     </div>
   );
 }`}</code>
@@ -143,6 +171,77 @@ export default function SimpleGantt() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+          Contoh Kode (sesuai demo)
+        </h2>
+        <pre className="overflow-x-auto rounded-xl bg-zinc-900 text-zinc-100 p-4">
+          <code>{`"use client";
+
+import { useMemo } from "react";
+import { Gantt, type Task, ViewMode } from "@odik91/gantt-task-react";
+import "@odik91/gantt-task-react/dist/style.css";
+
+export default function SimpleGantt() {
+  const viewDate = useMemo(() => new Date(2020, 1, 1), []);
+
+  const tasks = useMemo<Task[]>(
+    () => [
+      // Root project (supaya list task punya hierarchy)
+      {
+        id: "p1",
+        type: "project",
+        name: "Project Alpha",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 6),
+        progress: 0,
+        isDisabled: true,
+      },
+      // Child tasks
+      {
+        id: "t1",
+        type: "task",
+        parent: "p1",
+        name: "Idea",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 3),
+        progress: 45,
+        shortName: "Ana",
+      },
+      {
+        id: "t2",
+        type: "task",
+        parent: "p1",
+        name: "Implementation",
+        start: new Date(2020, 1, 3),
+        end: new Date(2020, 1, 6),
+        progress: 10,
+        shortName: "Budi",
+      },
+    ],
+    []
+  );
+
+  return (
+    <div
+      style={{
+        height: 520,
+        overflowX: "auto",
+      }}
+    >
+      <div style={{ minWidth: 1800, width: "max-content" }}>
+        <Gantt
+          tasks={tasks}
+          viewMode={ViewMode.Day}
+          viewDate={viewDate}
+        />
+      </div>
+    </div>
+  );
+}`}</code>
+        </pre>
       </section>
     </article>
   );
