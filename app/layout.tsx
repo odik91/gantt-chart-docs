@@ -17,6 +17,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "gantt-task-react Docs",
   description: "Dokumentasi untuk @odik91/gantt-task-react",
+  keywords: [
+    "gantt chart",
+    "react gantt",
+    "gantt-task-react",
+    "@odik91/gantt-task-react",
+    "typescript",
+    "nextjs",
+    "app router",
+    "drag and drop",
+    "task dependencies",
+    "timeline",
+  ],
 };
 
 export default function RootLayout({
