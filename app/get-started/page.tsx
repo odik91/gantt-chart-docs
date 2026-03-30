@@ -1,4 +1,33 @@
+"use client";
+
+import { useMemo } from "react";
+import { Gantt, ViewMode, type Task } from "@odik91/gantt-task-react";
+
 export default function GetStartedPage() {
+  const tasks = useMemo<Task[]>(
+    () => [
+      {
+        id: "t1",
+        type: "task",
+        name: "Idea",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 2),
+        progress: 45,
+        shortName: "Ana",
+      },
+      {
+        id: "t2",
+        type: "task",
+        name: "Implementation",
+        start: new Date(2020, 1, 2),
+        end: new Date(2020, 1, 6),
+        progress: 10,
+        shortName: "Budi",
+      },
+    ],
+    []
+  );
+
   return (
     <article className="space-y-6">
       <div className="space-y-2">
@@ -73,6 +102,20 @@ export default function SimpleGantt() {
   );
 }`}</code>
         </pre>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+          Demo Render (Realtime)
+        </h2>
+        <div className="rounded-xl border border-black/5 overflow-hidden bg-white dark:bg-black">
+          <div className="p-3 text-sm text-zinc-600 dark:text-zinc-300 border-b border-black/5">
+            Contoh tasks diambil dari snippet di atas.
+          </div>
+          <div style={{ height: 520 }}>
+            <Gantt tasks={tasks} viewMode={ViewMode.Day} />
+          </div>
+        </div>
       </section>
     </article>
   );
