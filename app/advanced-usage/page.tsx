@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Gantt,
   ViewMode,
@@ -394,17 +394,14 @@ const [selectedViewMode, setSelectedViewMode] = useState(ViewMode.Day);
   const [crudTasks, setCrudTasks] = useState<TaskOrEmpty[]>(
     syncParentDateRangeFromChildren(rawCrudTasks)
   );
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
-    null
-  );
   const [crudIndex, setCrudIndex] = useState(3);
 
-  const selectedCrudTask = useMemo(
-    () => crudTasks.find((t) => t.id === selectedTaskId && t.type === "task") as
-      | (Task & { parent: string })
-      | undefined,
-    [crudTasks, selectedTaskId]
+  const crudResolverRef = useRef<((value: TaskOrEmpty | null) => void) | null>(
+    null
   );
+  const crudModeRef = useRef<"add" | "edit" | null>(null);
+  const crudEditTaskRef = useRef<TaskOrEmpty | null>(null);
+  const crudPendingIdRef = useRef<string | null>(null);
 
   const dateToInputValue = (date: Date) => {
     const y = date.getFullYear();
@@ -488,80 +485,124 @@ export default function CrudModalExample() {
   );
 }`;
 
-  const openAddCrudModal = () => {
-    const start = new Date(2020, 1, 1 + crudIndex);
-    const end = new Date(2020, 1, 1 + crudIndex + 2);
-
-    setCrudModalMode("add");
-    setCrudFormName(`Task ${crudIndex}`);
-    setCrudFormStart(dateToInputValue(start));
-    setCrudFormEnd(dateToInputValue(end));
-    setCrudFormProgress(0);
-    setCrudModalOpen(true);
+  const resolveCrudModal = (nextTask: TaskOrEmpty | null) => {
+    const resolver = crudResolverRef.current;
+    crudResolverRef.current = null;
+    crudModeRef.current = null;
+    crudEditTaskRef.current = null;
+    crudPendingIdRef.current = null;
+    setCrudModalOpen(false);
+    resolver?.(nextTask);
   };
 
-  const openEditCrudModal = () => {
-    if (!selectedCrudTask) return;
-
-    setCrudModalMode("edit");
-    setCrudFormName(selectedCrudTask.name);
-    setCrudFormStart(dateToInputValue(selectedCrudTask.start));
-    setCrudFormEnd(dateToInputValue(selectedCrudTask.end));
-    setCrudFormProgress(selectedCrudTask.progress);
-    setCrudModalOpen(true);
+  const cancelCrudModal = () => {
+    resolveCrudModal(null);
   };
-
-  const closeCrudModal = () => setCrudModalOpen(false);
 
   const submitCrudModal = () => {
+    const mode = crudModeRef.current;
+    if (!mode) return;
+
     const start = inputValueToDate(crudFormStart);
     const endCandidate = inputValueToDate(crudFormEnd);
     const end = endCandidate < start ? start : endCandidate;
     const progress = Math.max(0, Math.min(100, crudFormProgress));
 
-    if (crudModalMode === "add") {
-      const id = `t${crudIndex}`;
+    if (mode === "add") {
+      const pendingId = crudPendingIdRef.current ?? `t${crudIndex}`;
       const newTask: TaskOrEmpty = {
-        id,
+        id: pendingId,
         type: "task",
-        parent: "p1",
-        name: crudFormName || `Task ${crudIndex}`,
+        name: crudFormName || pendingId,
         start,
         end,
         progress,
       };
 
-      const next = syncParentDateRangeFromChildren([...crudTasks, newTask]);
-      setCrudTasks(next);
       setCrudIndex((v) => v + 1);
-      setSelectedTaskId(id);
-      closeCrudModal();
+      resolveCrudModal(newTask);
       return;
     }
 
-    // edit
-    if (!selectedTaskId) return;
-    const next = syncParentDateRangeFromChildren(
-      crudTasks.map((t) => {
-        if (t.type !== "task" || t.id !== selectedTaskId) return t;
-        return {
-          ...t,
-          name: crudFormName || t.name,
-          start,
-          end,
-          progress,
-        };
-      })
-    );
-    setCrudTasks(next);
-    closeCrudModal();
+    const editTask = crudEditTaskRef.current;
+    if (!editTask) {
+      resolveCrudModal(null);
+      return;
+    }
+
+    if (editTask.type !== "empty") {
+      const updated: TaskOrEmpty = {
+        ...editTask,
+        name: crudFormName || editTask.name,
+        start,
+        end,
+        progress,
+      };
+      resolveCrudModal(updated);
+      return;
+    }
+
+    const updatedEmpty: TaskOrEmpty = {
+      ...editTask,
+      name: crudFormName || editTask.name,
+    };
+    resolveCrudModal(updatedEmpty);
   };
 
-  const deleteSelectedCrudTask = () => {
-    if (!selectedTaskId) return;
-    const next = crudTasks.filter((t) => t.id !== selectedTaskId);
-    setCrudTasks(syncParentDateRangeFromChildren(next));
-    setSelectedTaskId(null);
+  const onAddTask = async (parentTask: Task): Promise<TaskOrEmpty | null> => {
+    const currentIndex = crudIndex;
+    const pendingId = `t${currentIndex}`;
+
+    const start = new Date(parentTask.start);
+    const endCandidate = new Date(start);
+    endCandidate.setDate(endCandidate.getDate() + 2);
+    const end =
+      parentTask.end && endCandidate > parentTask.end
+        ? new Date(parentTask.end)
+        : endCandidate;
+
+    crudModeRef.current = "add";
+    crudEditTaskRef.current = null;
+    crudPendingIdRef.current = pendingId;
+
+    setCrudModalMode("add");
+    setCrudFormName(`Task ${currentIndex}`);
+    setCrudFormStart(dateToInputValue(start));
+    setCrudFormEnd(dateToInputValue(end));
+    setCrudFormProgress(0);
+
+    return new Promise((resolve) => {
+      crudResolverRef.current = resolve;
+      setCrudModalOpen(true);
+    });
+  };
+
+  const onEditTask = async (
+    task: TaskOrEmpty
+  ): Promise<TaskOrEmpty | null> => {
+    crudModeRef.current = "edit";
+    crudPendingIdRef.current = null;
+    crudEditTaskRef.current = task;
+
+    setCrudModalMode("edit");
+    setCrudFormName(task.name);
+
+    if (task.type !== "empty") {
+      setCrudFormStart(dateToInputValue(task.start));
+      setCrudFormEnd(dateToInputValue(task.end));
+      setCrudFormProgress(task.progress);
+    } else {
+      setCrudFormStart(dateToInputValue(viewDate));
+      setCrudFormEnd(
+        dateToInputValue(new Date(viewDate.getTime() + 2 * 86400000))
+      );
+      setCrudFormProgress(0);
+    }
+
+    return new Promise((resolve) => {
+      crudResolverRef.current = resolve;
+      setCrudModalOpen(true);
+    });
   };
 
   return (
@@ -788,52 +829,14 @@ export default function CrudModalExample() {
         </p>
 
         <div className="rounded-xl border border-black/5 bg-white dark:bg-black space-y-3">
-          <div className="p-3 border-b border-black/5 space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={openAddCrudModal}
-                className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
-              >
-                Add Task
-              </button>
-              <button
-                type="button"
-                onClick={openEditCrudModal}
-                disabled={!selectedTaskId}
-                className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={deleteSelectedCrudTask}
-                disabled={!selectedTaskId}
-                className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
-              >
-                Delete
-              </button>
-            </div>
-
-            <div className="text-xs text-zinc-600 dark:text-zinc-300">
-              Selected:{" "}
-              {selectedCrudTask ? (
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {selectedCrudTask.name} ({selectedCrudTask.progress}%)
-                </span>
-              ) : (
-                <span>-</span>
-              )}
-            </div>
-          </div>
-
           <GanttFrame height={620}>
             <Gantt
               tasks={crudTasks}
               viewMode={ViewMode.Day}
               viewDate={viewDate}
               isUpdateDisabledParentsOnChange
-              onClick={(task) => setSelectedTaskId(task.id)}
+              onAddTask={onAddTask}
+              onEditTask={onEditTask}
               onChangeTasks={(nextTasks) =>
                 setCrudTasks(syncParentDateRangeFromChildren(nextTasks))
               }
@@ -846,7 +849,7 @@ export default function CrudModalExample() {
         {crudModalOpen ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={closeCrudModal}
+            onClick={cancelCrudModal}
           >
             <div
               className="w-full max-w-md rounded-xl border border-black/10 bg-white p-5 shadow-xl dark:bg-black dark:border-white/10"
@@ -863,7 +866,7 @@ export default function CrudModalExample() {
                 </div>
                 <button
                   type="button"
-                  onClick={closeCrudModal}
+                  onClick={cancelCrudModal}
                   className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:border-white/10 dark:text-zinc-100 dark:hover:bg-black/40"
                 >
                   X
@@ -930,7 +933,7 @@ export default function CrudModalExample() {
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={closeCrudModal}
+                    onClick={cancelCrudModal}
                     className="rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:border-white/10 dark:text-zinc-100 dark:hover:bg-black/40"
                   >
                     Cancel
