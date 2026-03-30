@@ -70,7 +70,15 @@ export default function RootLayout({
 
         <footer className="border-t border-black/5">
           <div className="max-w-5xl mx-auto px-6 py-6 text-xs text-zinc-500">
-            Built with Next.js (App Router).
+            License under MIT License by{" "}
+            <a
+              href="https://github.com/odik91/odik91-gant-chart"
+              target="_blank"
+              rel="noreferrer"
+              className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              Ali Shoddiqien
+            </a>
           </div>
         </footer>
       </body>
