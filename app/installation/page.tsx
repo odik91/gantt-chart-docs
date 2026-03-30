@@ -1,3 +1,38 @@
+"use client";
+
+import { useState } from "react";
+
+function CommandBlock({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Fallback sederhana bila clipboard tidak tersedia.
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onCopy}
+        className="absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-md border border-black/10 bg-white/70 px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-white dark:bg-black/40 dark:text-zinc-100 dark:hover:bg-black/60"
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+
+      <pre className="overflow-x-auto rounded-xl bg-zinc-900 text-zinc-100 p-4 pt-10">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 export default function InstallationPage() {
   return (
     <article className="space-y-6">
@@ -14,9 +49,7 @@ export default function InstallationPage() {
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
           Install via npm
         </h2>
-        <pre className="overflow-x-auto rounded-xl bg-zinc-900 text-zinc-100 p-4">
-          <code>{`npm i @odik91/gantt-task-react`}</code>
-        </pre>
+        <CommandBlock code={`npm i @odik91/gantt-task-react`} />
       </section>
 
       <section className="space-y-3">
@@ -28,10 +61,33 @@ export default function InstallationPage() {
           App Router, cara paling aman adalah meng-`import` global CSS di
           `app/layout.tsx`.
         </p>
-        <pre className="overflow-x-auto rounded-xl bg-zinc-900 text-zinc-100 p-4">
-          <code>{`// app/layout.tsx
-import "@odik91/gantt-task-react/dist/style.css";`}</code>
-        </pre>
+        <CommandBlock
+          code={`// app/layout.tsx
+import "@odik91/gantt-task-react/dist/style.css";`}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+          Installation untuk React
+        </h2>
+        <p className="text-zinc-700 dark:text-zinc-300">
+          Paket ini punya peer dependency untuk <code>react</code> dan{" "}
+          <code>react-dom</code>. Di proyek Next.js, biasanya React sudah
+          terpasang, jadi tidak perlu install ulang.
+        </p>
+
+        <ul className="list-disc pl-5 space-y-1 text-zinc-700 dark:text-zinc-300">
+          <li>
+            Untuk Next.js: React sudah tersedia (cukup pastikan versi React
+            kompatibel).
+          </li>
+          <li>
+            Untuk project React lain: install peer dependency berikut.
+          </li>
+        </ul>
+
+        <CommandBlock code={`npm i react react-dom`} />
       </section>
 
       <section className="space-y-3">
