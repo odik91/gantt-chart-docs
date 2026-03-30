@@ -406,66 +406,155 @@ const [selectedViewMode, setSelectedViewMode] = useState(ViewMode.Day);
     [crudTasks, selectedTaskId]
   );
 
+  const dateToInputValue = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const inputValueToDate = (value: string) => {
+    const [y, m, d] = value.split("-").map((v) => Number(v));
+    return new Date(y, m - 1, d);
+  };
+
+  const [crudModalOpen, setCrudModalOpen] = useState(false);
+  const [crudModalMode, setCrudModalMode] = useState<"add" | "edit">("add");
+  const [crudFormName, setCrudFormName] = useState("");
+  const [crudFormStart, setCrudFormStart] = useState("");
+  const [crudFormEnd, setCrudFormEnd] = useState("");
+  const [crudFormProgress, setCrudFormProgress] = useState(0);
+
   const codeCrud = `"use client";
 
-// CRUD sederhana via UI + sync state
-import { useMemo, useState } from "react";
+// CRUD dengan modal (Add + Edit) + sync parent dates
+import { useState } from "react";
 import { Gantt, ViewMode, syncParentDateRangeFromChildren, type TaskOrEmpty } from "@odik91/gantt-task-react";
 
-export default function CrudExample() {
+export default function CrudModalExample() {
   const [tasks, setTasks] = useState<TaskOrEmpty[]>(syncParentDateRangeFromChildren(rawCrudTasks));
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [crudIndex, setCrudIndex] = useState(3);
 
-  function addTask() {
-    const start = new Date(2020, 1, 1 + crudIndex);
-    const end = new Date(2020, 1, 1 + crudIndex + 2);
-    const newTask = {
-      id: "t" + crudIndex,
-      type: "task",
-      parent: "p1",
-      name: "Task " + crudIndex,
-      start,
-      end,
-      progress: 0,
-    };
-    const next = [...tasks, newTask];
-    setTasks(syncParentDateRangeFromChildren(next));
-    setCrudIndex((v) => v + 1);
+  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<"add" | "edit">("add");
+
+  // form state: name, start, end, progress
+  const [name, setName] = useState("");
+  const [start, setStart] = useState("2020-02-01");
+  const [end, setEnd] = useState("2020-02-03");
+  const [progress, setProgress] = useState(0);
+
+  function openAdd() {
+    setMode("add");
+    setName("Task ...");
+    setIsOpen(true);
+  }
+
+  function openEdit() {
+    setMode("edit");
+    setIsOpen(true);
+  }
+
+  function submit() {
+    const startDate = inputValueToDate(start);
+    const endDate = inputValueToDate(end);
+    const nextTasks =
+      mode === "add"
+        ? [...tasks, { id: ..., type: "task", parent: "p1", name, start: startDate, end: endDate, progress }]
+        : tasks.map((t) => (t.id === selectedTaskId ? { ...t, name, start: startDate, end: endDate, progress } : t));
+
+    setTasks(syncParentDateRangeFromChildren(nextTasks));
+    setIsOpen(false);
   }
 
   return (
     <>
-      <button onClick={addTask}>Add Task</button>
+      <button onClick={openAdd}>Add Task</button>
+      <button onClick={openEdit} disabled={!selectedTaskId}>Edit</button>
+
       <Gantt
         tasks={tasks}
         viewMode={ViewMode.Day}
         onClick={(task) => setSelectedTaskId(task.id)}
-        onChangeTasks={(nextTasks) => setTasks(syncParentDateRangeFromChildren(nextTasks))}
+        onChangeTasks={(next) => setTasks(syncParentDateRangeFromChildren(next))}
       />
+
+      {isOpen && (
+        <Modal onSubmit={submit}>
+          {/* input: name, start(date), end(date), progress */}
+        </Modal>
+      )}
     </>
   );
 }`;
 
-  const addCrudTask = () => {
-    const base = new Date(2020, 1, 1).getTime();
-    const start = new Date(base + crudIndex * 24 * 60 * 60 * 1000);
-    const end = new Date(base + (crudIndex + 2) * 24 * 60 * 60 * 1000);
+  const openAddCrudModal = () => {
+    const start = new Date(2020, 1, 1 + crudIndex);
+    const end = new Date(2020, 1, 1 + crudIndex + 2);
 
-    const newTask: TaskOrEmpty = {
-      id: `t${crudIndex}`,
-      type: "task",
-      parent: "p1",
-      name: `Task ${crudIndex}`,
-      start,
-      end,
-      progress: 0,
-    };
+    setCrudModalMode("add");
+    setCrudFormName(`Task ${crudIndex}`);
+    setCrudFormStart(dateToInputValue(start));
+    setCrudFormEnd(dateToInputValue(end));
+    setCrudFormProgress(0);
+    setCrudModalOpen(true);
+  };
 
-    const next = syncParentDateRangeFromChildren([...crudTasks, newTask]);
+  const openEditCrudModal = () => {
+    if (!selectedCrudTask) return;
+
+    setCrudModalMode("edit");
+    setCrudFormName(selectedCrudTask.name);
+    setCrudFormStart(dateToInputValue(selectedCrudTask.start));
+    setCrudFormEnd(dateToInputValue(selectedCrudTask.end));
+    setCrudFormProgress(selectedCrudTask.progress);
+    setCrudModalOpen(true);
+  };
+
+  const closeCrudModal = () => setCrudModalOpen(false);
+
+  const submitCrudModal = () => {
+    const start = inputValueToDate(crudFormStart);
+    const endCandidate = inputValueToDate(crudFormEnd);
+    const end = endCandidate < start ? start : endCandidate;
+    const progress = Math.max(0, Math.min(100, crudFormProgress));
+
+    if (crudModalMode === "add") {
+      const id = `t${crudIndex}`;
+      const newTask: TaskOrEmpty = {
+        id,
+        type: "task",
+        parent: "p1",
+        name: crudFormName || `Task ${crudIndex}`,
+        start,
+        end,
+        progress,
+      };
+
+      const next = syncParentDateRangeFromChildren([...crudTasks, newTask]);
+      setCrudTasks(next);
+      setCrudIndex((v) => v + 1);
+      setSelectedTaskId(id);
+      closeCrudModal();
+      return;
+    }
+
+    // edit
+    if (!selectedTaskId) return;
+    const next = syncParentDateRangeFromChildren(
+      crudTasks.map((t) => {
+        if (t.type !== "task" || t.id !== selectedTaskId) return t;
+        return {
+          ...t,
+          name: crudFormName || t.name,
+          start,
+          end,
+          progress,
+        };
+      })
+    );
     setCrudTasks(next);
-    setCrudIndex((v) => v + 1);
-    setSelectedTaskId(newTask.id);
+    closeCrudModal();
   };
 
   const deleteSelectedCrudTask = () => {
@@ -473,16 +562,6 @@ export default function CrudExample() {
     const next = crudTasks.filter((t) => t.id !== selectedTaskId);
     setCrudTasks(syncParentDateRangeFromChildren(next));
     setSelectedTaskId(null);
-  };
-
-  const bumpSelectedCrudProgress = (delta: number) => {
-    if (!selectedTaskId) return;
-    const next = crudTasks.map((t) => {
-      if (t.type !== "task" || t.id !== selectedTaskId) return t;
-      const progress = Math.max(0, Math.min(100, t.progress + delta));
-      return { ...t, progress };
-    });
-    setCrudTasks(syncParentDateRangeFromChildren(next));
   };
 
   return (
@@ -700,11 +779,11 @@ export default function CrudExample() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
-          6) Contoh CRUD (UI tombol + state tasks)
+          6) Contoh CRUD (Modal + Edit)
         </h2>
         <p className="text-zinc-700 dark:text-zinc-300">
-          Contoh CRUD sederhana: tambah task baru, hapus task terpilih, dan
-          update progress task terpilih. Semua perubahan disinkronkan ke
+          Contoh CRUD sederhana dengan modal: Add task baru, Edit task
+          terpilih, dan Delete. Semua perubahan disinkronkan ke
           <code> tasks</code> lalu diteruskan ke <code>Gantt</code>.
         </p>
 
@@ -713,26 +792,18 @@ export default function CrudExample() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={addCrudTask}
+                onClick={openAddCrudModal}
                 className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
               >
                 Add Task
               </button>
               <button
                 type="button"
-                onClick={bumpSelectedCrudProgress.bind(null, 10)}
+                onClick={openEditCrudModal}
                 disabled={!selectedTaskId}
                 className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
               >
-                +Progress
-              </button>
-              <button
-                type="button"
-                onClick={bumpSelectedCrudProgress.bind(null, -10)}
-                disabled={!selectedTaskId}
-                className="rounded-md border border-black/10 bg-white px-3 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50 dark:bg-black/20 dark:text-zinc-100 dark:hover:bg-black/40"
-              >
-                -Progress
+                Edit
               </button>
               <button
                 type="button"
@@ -771,6 +842,110 @@ export default function CrudExample() {
         </div>
 
         <CodeBlock code={codeCrud} />
+
+        {crudModalOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={closeCrudModal}
+          >
+            <div
+              className="w-full max-w-md rounded-xl border border-black/10 bg-white p-5 shadow-xl dark:bg-black dark:border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    {crudModalMode === "add" ? "Add Task" : "Edit Task"}
+                  </div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Ubah name, start, end, dan progress.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCrudModal}
+                  className="rounded-md border border-black/10 bg-white px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:border-white/10 dark:text-zinc-100 dark:hover:bg-black/40"
+                >
+                  X
+                </button>
+              </div>
+
+              <form
+                className="mt-4 space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submitCrudModal();
+                }}
+              >
+                <div className="space-y-1">
+                  <label className="block text-xs text-zinc-600 dark:text-zinc-300">
+                    Name
+                  </label>
+                  <input
+                    value={crudFormName}
+                    onChange={(e) => setCrudFormName(e.target.value)}
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/30 dark:bg-black/20 dark:border-white/10 dark:text-zinc-50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-300">
+                      Start
+                    </label>
+                    <input
+                      type="date"
+                      value={crudFormStart}
+                      onChange={(e) => setCrudFormStart(e.target.value)}
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/30 dark:bg-black/20 dark:border-white/10 dark:text-zinc-50"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-300">
+                      End
+                    </label>
+                    <input
+                      type="date"
+                      value={crudFormEnd}
+                      onChange={(e) => setCrudFormEnd(e.target.value)}
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/30 dark:bg-black/20 dark:border-white/10 dark:text-zinc-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs text-zinc-600 dark:text-zinc-300">
+                    Progress ({crudFormProgress}%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={crudFormProgress}
+                    onChange={(e) => setCrudFormProgress(Number(e.target.value))}
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/30 dark:bg-black/20 dark:border-white/10 dark:text-zinc-50"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeCrudModal}
+                    className="rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:bg-black/20 dark:border-white/10 dark:text-zinc-100 dark:hover:bg-black/40"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
       </section>
     </article>
   );
