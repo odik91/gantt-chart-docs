@@ -4,22 +4,36 @@ import { useMemo } from "react";
 import { Gantt, ViewMode, type Task } from "@odik91/gantt-task-react";
 
 export default function GetStartedPage() {
+  const viewDate = useMemo(() => new Date(2020, 1, 1), []);
+
   const tasks = useMemo<Task[]>(
     () => [
+      // Root project so the task list has a hierarchy to render.
+      {
+        id: "p1",
+        type: "project",
+        name: "Project Alpha",
+        start: new Date(2020, 1, 1),
+        end: new Date(2020, 1, 6),
+        progress: 0,
+        isDisabled: true,
+      },
       {
         id: "t1",
         type: "task",
+        parent: "p1",
         name: "Idea",
         start: new Date(2020, 1, 1),
-        end: new Date(2020, 1, 2),
+        end: new Date(2020, 1, 3),
         progress: 45,
         shortName: "Ana",
       },
       {
         id: "t2",
         type: "task",
+        parent: "p1",
         name: "Implementation",
-        start: new Date(2020, 1, 2),
+        start: new Date(2020, 1, 3),
         end: new Date(2020, 1, 6),
         progress: 10,
         shortName: "Budi",
@@ -108,12 +122,25 @@ export default function SimpleGantt() {
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
           Demo Render (Realtime)
         </h2>
-        <div className="rounded-xl border border-black/5 overflow-hidden bg-white dark:bg-black">
+        <div className="rounded-xl border border-black/5 bg-white dark:bg-black">
           <div className="p-3 text-sm text-zinc-600 dark:text-zinc-300 border-b border-black/5">
             Contoh tasks diambil dari snippet di atas.
           </div>
-          <div style={{ height: 520 }}>
-            <Gantt tasks={tasks} viewMode={ViewMode.Day} />
+          <div className="overflow-x-auto overflow-y-hidden w-full">
+            <div
+              style={{
+                height: 520,
+                // Prevent shrink so the internal Gantt layout can exceed viewport width.
+                minWidth: 1800,
+                width: "max-content",
+              }}
+            >
+              <Gantt
+                tasks={tasks}
+                viewMode={ViewMode.Day}
+                viewDate={viewDate}
+              />
+            </div>
           </div>
         </div>
       </section>
